@@ -7,7 +7,7 @@
 #include <sstream>
 #include <numeric>
 
-#include "TriangleApp.h"
+#include "SSRayMarching.h"
 
 // Vulkanƒ‰ƒCƒuƒ‰ƒŠ‚ÌƒŠƒ“ƒN
 #pragma comment(lib, "vulkan-1.lib")
@@ -32,7 +32,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	//freopen_s(&fp, "CONIN$", "r", stdin);
 
 	// Vulkan ‰Šú‰»
-	TriangleApp theApp;
+	SSRayMarching theApp;
 	theApp.initialize(window, AppTitle);
 
 	while (glfwWindowShouldClose(window) == GLFW_FALSE)

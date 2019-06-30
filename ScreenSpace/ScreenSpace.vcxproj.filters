@@ -30,7 +30,7 @@
     <ClCompile Include="..\common\VulkanAppBase.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="TriangleApp.cpp">
+    <ClCompile Include="SSRayMarching.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,7 +38,7 @@
     <ClInclude Include="..\common\VulkanAppBase.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="TriangleApp.h">
+    <ClInclude Include="SSRayMarching.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

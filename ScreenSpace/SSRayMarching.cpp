@@ -1,4 +1,4 @@
-﻿#include "TriangleApp.h"
+﻿#include "SSRayMarching.h"
 
 #include <fstream>
 #include <array>
@@ -12,7 +12,7 @@ using namespace std;
 // Public ===================================================================
 
 // 準備
-void TriangleApp::prepare()
+void SSRayMarching::prepare()
 {
 	/* VERTEX */
 	const vec3 red(1.0f, 0.0f, 0.0f);
@@ -188,7 +188,7 @@ void TriangleApp::prepare()
 }
 
 // クリーンアップ
-void TriangleApp::cleanup()
+void SSRayMarching::cleanup()
 {
 	for (auto& v : m_uniformBuffers)
 	{
@@ -209,7 +209,7 @@ void TriangleApp::cleanup()
 }
 
 // コマンド作成
-void TriangleApp::makeCommand(VkCommandBuffer command)
+void SSRayMarching::makeCommand(VkCommandBuffer command)
 {
 	// ユニフォームバッファの中身を更新する
 	ShaderParameters shaderParam{};
@@ -264,7 +264,7 @@ void TriangleApp::makeCommand(VkCommandBuffer command)
 // Private ==================================================================
 
 // バッファオブジェクトを作成する
-TriangleApp::BufferObject TriangleApp::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags)
+SSRayMarching::BufferObject SSRayMarching::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags)
 {
 	BufferObject obj;
 	VkBufferCreateInfo ci{};
@@ -292,7 +292,7 @@ TriangleApp::BufferObject TriangleApp::createBuffer(uint32_t size, VkBufferUsage
 	return obj;
 }
 
-VkPipelineShaderStageCreateInfo TriangleApp::loadShaderModule(const char* fileName, VkShaderStageFlagBits stage)
+VkPipelineShaderStageCreateInfo SSRayMarching::loadShaderModule(const char* fileName, VkShaderStageFlagBits stage)
 {
 	ifstream infile(fileName, std::ios::binary);
 	if (!infile)
@@ -318,7 +318,7 @@ VkPipelineShaderStageCreateInfo TriangleApp::loadShaderModule(const char* fileNa
 	return shaderStageCI;
 }
 
-void TriangleApp::prepareDescriptorSetLayout()
+void SSRayMarching::prepareDescriptorSetLayout()
 {
 	vector<VkDescriptorSetLayoutBinding> bindings;
 	VkDescriptorSetLayoutBinding bindingUBO{};
@@ -335,7 +335,7 @@ void TriangleApp::prepareDescriptorSetLayout()
 	vkCreateDescriptorSetLayout(m_device, &ci, nullptr, &m_descriptorSetLayout);
 }
 
-void TriangleApp::prepareDescriptorPool()
+void SSRayMarching::prepareDescriptorPool()
 {
 	array<VkDescriptorPoolSize, 1> descPoolSize;
 	descPoolSize[0].descriptorCount = 1;
@@ -349,7 +349,7 @@ void TriangleApp::prepareDescriptorPool()
 	vkCreateDescriptorPool(m_device, &ci, nullptr, &m_descriptorPool);
 }
 
-void TriangleApp::prepareDescriptorSet()
+void SSRayMarching::prepareDescriptorSet()
 {
 	vector<VkDescriptorSetLayout> layouts;
 	for (int i = 0; i< int(m_uniformBuffers.size()); ++i)

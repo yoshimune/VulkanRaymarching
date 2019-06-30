@@ -3,10 +3,10 @@
 #include "../common/VulkanAppBase.h"
 #include "glm/glm.hpp"
 
-class TriangleApp : public VulkanAppBase
+class SSRayMarching : public VulkanAppBase
 {
 public:
-	TriangleApp() : VulkanAppBase() {}
+	SSRayMarching() : VulkanAppBase() {}
 
 	virtual void prepare() override;
 	virtual void cleanup() override;

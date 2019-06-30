@@ -154,11 +154,11 @@
   <ItemGroup>
     <ClCompile Include="..\common\VulkanAppBase.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="TriangleApp.cpp" />
+    <ClCompile Include="SSRayMarching.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\VulkanAppBase.h" />
-    <ClInclude Include="TriangleApp.h" />
+    <ClInclude Include="SSRayMarching.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
