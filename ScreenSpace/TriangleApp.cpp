@@ -2,6 +2,8 @@
 
 #include <fstream>
 #include <array>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 using namespace glm;
 using namespace std;
@@ -211,12 +213,27 @@ void TriangleApp::makeCommand(VkCommandBuffer command)
 {
 	// ユニフォームバッファの中身を更新する
 	ShaderParameters shaderParam{};
-	shaderParam.resolution = vec2{ width, height };
-	shaderParam.camera_pos = vec3{ 0, 0, -4.0 };
-	shaderParam.camera_dir = vec3{ 0, 1.0, 0 };
-	shaderParam.camera_up = vec3{ 0, 1.0, 0 };
-	//shaderParam.camera_side = glm::normalize(glm::cross(shaderParam.camera_dir, shaderParam.camera_up));
-	shaderParam.camera_side = vec3{ 1.0, 0, 0 };
+	shaderParam.resolution = vec4( width, height, 0.0f, 0.0f);
+	shaderParam.camera_pos = vec4( 0.0f, 0.0f, -4.0f, 0.0f);
+	shaderParam.camera_dir = vec4( 0.0f, 0.0f, 1.0f, 0.0f);
+	shaderParam.camera_up = vec4( 0.0f, 1.0f, 0.0f, 0.0f);
+	shaderParam.camera_side = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+
+	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 0, 1.0));
+	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 0, 3.0));
+	//shaderParam.light_pos = vec4(1.0f, -2.5f, 1.0f, 0.0f);
+	shaderParam.light_pos = translation * rotation * vec4(0.0f, -1.0f, -3.0f, 1.0f);
+
+	//printf("%s \n", glm::to_string(rotation));
+
+	printf("%f, %f, %f, %f \n", shaderParam.light_pos.x, shaderParam.light_pos.y, shaderParam.light_pos.z, shaderParam.light_pos.w);
+	//printf("%f, %f, %f, %f \n", rotation[0].x, rotation[0].y, rotation[0].z, rotation[0].w);
+	//printf("%f, %f, %f, %f \n", rotation[1].x, rotation[1].y, rotation[1].z, rotation[1].w);
+	//printf("%f, %f, %f, %f \n", rotation[2].x, rotation[2].y, rotation[2].z, rotation[2].w);
+	//printf("%f, %f, %f, %f \n", rotation[3].x, rotation[3].y, rotation[3].z, rotation[3].w);
+	//printf("\n");
+
+	shaderParam.light_color = vec4( 4.0f, 5.0f, 6.0f, 0.0f );
 	{
 		auto memory = m_uniformBuffers[m_imageIndex].memory;
 		void* p;

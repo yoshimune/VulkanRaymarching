@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <array>
+#include <stdio.h>
 
 #define GetInstanceProcAddr(FuncName) \
 	m_##FuncName = reinterpret_cast<PFN_##FuncName>(vkGetInstanceProcAddr(m_instance, #FuncName))
@@ -160,6 +161,9 @@ void VulkanAppBase::terminate()
 
 void VulkanAppBase::render()
 {
+	prevTime = currentTime;
+	currentTime = glfwGetTime();
+
 	uint32_t nextImageIndex = 0;
 	vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_presentCompletedSem, VK_NULL_HANDLE, &nextImageIndex);
 	auto commandFence = m_fences[nextImageIndex];
@@ -220,6 +224,7 @@ void VulkanAppBase::render()
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &m_renderCompletedSem;
 	vkQueuePresentKHR(m_deviceQueue, &presentInfo);
+
 }
 
 

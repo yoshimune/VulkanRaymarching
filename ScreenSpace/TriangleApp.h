@@ -29,11 +29,13 @@ private:
 
 	struct ShaderParameters
 	{
-		glm::vec2 resolution;
-		glm::vec3 camera_pos;
-		glm::vec3 camera_dir;
-		glm::vec3 camera_up;
-		glm::vec3 camera_side;
+		glm::vec4 resolution;
+		glm::vec4 camera_pos;
+		glm::vec4 camera_dir;
+		glm::vec4 camera_up;
+		glm::vec4 camera_side;
+		glm::vec4 light_pos;
+		glm::vec4 light_color;
 	};
 
 	BufferObject createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags);
