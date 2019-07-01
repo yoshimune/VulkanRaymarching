@@ -38,6 +38,10 @@ private:
 		glm::vec4 light_color;
 	};
 
+	void prepareGeometry();
+	void prepareUniformBuffer();
+	ShaderParameters createShaderParameters();
+
 	BufferObject createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags);
 	VkPipelineShaderStageCreateInfo loadShaderModule(const char* fileName, VkShaderStageFlagBits stage);
 

@@ -14,46 +14,11 @@ using namespace std;
 // 準備
 void SSRayMarching::prepare()
 {
-	/* VERTEX */
-	const vec3 red(1.0f, 0.0f, 0.0f);
-	const vec3 green(0.0f, 1.0f, 0.0f);
-	const vec3 blue(0.0f, 0.0f, 1.0f);
-
-	Vertex vertices[] = {
-		{ vec3(-1.0f, 1.0f, 0.0f), red },
-		{ vec3(-1.0f, -1.0f, 0.0f), green},
-		{ vec3(1.0f, 1.0f, 0.0f), blue },
-		{ vec3(1.0f, -1.0f, 0.0f), red },
-	};
-	uint32_t indices[] = { 0,1,2, 2,1,3 };
-
-	m_vertexBuffer = createBuffer(sizeof(vertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_indexBuffer = createBuffer(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-	// 頂点データの書き込み
-	{
-		void* p;
-		vkMapMemory(m_device, m_vertexBuffer.memory, 0, VK_WHOLE_SIZE, 0, &p);
-		memcpy(p, vertices, sizeof(vertices));
-		vkUnmapMemory(m_device, m_vertexBuffer.memory);
-	}
-	// インデックスデータの書き込み
-	{
-		void* p;
-		vkMapMemory(m_device, m_indexBuffer.memory, 0, VK_WHOLE_SIZE, 0, &p);
-		memcpy(p, indices, sizeof(indices));
-		vkUnmapMemory(m_device, m_indexBuffer.memory);
-	}
-	m_indexCount = _countof(indices);
-
+	// 頂点情報構築
+	prepareGeometry();
 
 	// ユニフォームバッファ
-	m_uniformBuffers.resize(m_swapchainViews.size());
-	for (auto& v : m_uniformBuffers)
-	{
-		VkMemoryPropertyFlags uboFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		v = createBuffer(sizeof(ShaderParameters), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
-	}
+	prepareUniformBuffer();
 
 	prepareDescriptorSetLayout();
 	prepareDescriptorPool();
@@ -211,29 +176,7 @@ void SSRayMarching::cleanup()
 // コマンド作成
 void SSRayMarching::makeCommand(VkCommandBuffer command)
 {
-	// ユニフォームバッファの中身を更新する
-	ShaderParameters shaderParam{};
-	shaderParam.resolution = vec4( width, height, 0.0f, 0.0f);
-	shaderParam.camera_pos = vec4( 0.0f, 0.0f, -4.0f, 0.0f);
-	shaderParam.camera_dir = vec4( 0.0f, 0.0f, 1.0f, 0.0f);
-	shaderParam.camera_up = vec4( 0.0f, 1.0f, 0.0f, 0.0f);
-	shaderParam.camera_side = vec4(1.0f, 0.0f, 0.0f, 0.0f);
-
-	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 0, 1.0));
-	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 0, 3.0));
-	//shaderParam.light_pos = vec4(1.0f, -2.5f, 1.0f, 0.0f);
-	shaderParam.light_pos = translation * rotation * vec4(0.0f, -1.0f, -3.0f, 1.0f);
-
-	//printf("%s \n", glm::to_string(rotation));
-
-	printf("%f, %f, %f, %f \n", shaderParam.light_pos.x, shaderParam.light_pos.y, shaderParam.light_pos.z, shaderParam.light_pos.w);
-	//printf("%f, %f, %f, %f \n", rotation[0].x, rotation[0].y, rotation[0].z, rotation[0].w);
-	//printf("%f, %f, %f, %f \n", rotation[1].x, rotation[1].y, rotation[1].z, rotation[1].w);
-	//printf("%f, %f, %f, %f \n", rotation[2].x, rotation[2].y, rotation[2].z, rotation[2].w);
-	//printf("%f, %f, %f, %f \n", rotation[3].x, rotation[3].y, rotation[3].z, rotation[3].w);
-	//printf("\n");
-
-	shaderParam.light_color = vec4( 4.0f, 5.0f, 6.0f, 0.0f );
+	auto shaderParam = createShaderParameters();
 	{
 		auto memory = m_uniformBuffers[m_imageIndex].memory;
 		void* p;
@@ -290,6 +233,80 @@ SSRayMarching::BufferObject SSRayMarching::createBuffer(uint32_t size, VkBufferU
 	// メモリのバインド
 	vkBindBufferMemory(m_device, obj.buffer, obj.memory, 0);
 	return obj;
+}
+
+SSRayMarching::ShaderParameters SSRayMarching::createShaderParameters()
+{
+	// ユニフォームバッファの中身を更新する
+	ShaderParameters shaderParam{};
+	shaderParam.resolution = vec4(width, height, 0.0f, 0.0f);
+	shaderParam.camera_pos = vec4(0.0f, 0.0f, -4.0f, 0.0f);
+	shaderParam.camera_dir = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+	shaderParam.camera_up = vec4(0.0f, 1.0f, 0.0f, 0.0f);
+	shaderParam.camera_side = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+
+	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 0, 1.0));
+	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 0, 3.0));
+	//shaderParam.light_pos = vec4(1.0f, -2.5f, 1.0f, 0.0f);
+	shaderParam.light_pos = translation * rotation * vec4(0.0f, -1.0f, -3.0f, 1.0f);
+
+	//printf("%s \n", glm::to_string(rotation));
+
+	printf("%f, %f, %f, %f \n", shaderParam.light_pos.x, shaderParam.light_pos.y, shaderParam.light_pos.z, shaderParam.light_pos.w);
+	//printf("%f, %f, %f, %f \n", rotation[0].x, rotation[0].y, rotation[0].z, rotation[0].w);
+	//printf("%f, %f, %f, %f \n", rotation[1].x, rotation[1].y, rotation[1].z, rotation[1].w);
+	//printf("%f, %f, %f, %f \n", rotation[2].x, rotation[2].y, rotation[2].z, rotation[2].w);
+	//printf("%f, %f, %f, %f \n", rotation[3].x, rotation[3].y, rotation[3].z, rotation[3].w);
+	//printf("\n");
+
+	shaderParam.light_color = vec4(4.0f, 5.0f, 6.0f, 0.0f);
+	return shaderParam;
+}
+
+void SSRayMarching::prepareGeometry()
+{
+	/* VERTEX */
+	const vec3 red(1.0f, 0.0f, 0.0f);
+	const vec3 green(0.0f, 1.0f, 0.0f);
+	const vec3 blue(0.0f, 0.0f, 1.0f);
+
+	Vertex vertices[] = {
+		{ vec3(-1.0f, 1.0f, 0.0f), red },
+		{ vec3(-1.0f, -1.0f, 0.0f), green},
+		{ vec3(1.0f, 1.0f, 0.0f), blue },
+		{ vec3(1.0f, -1.0f, 0.0f), red },
+	};
+	uint32_t indices[] = { 0,1,2, 2,1,3 };
+
+	m_vertexBuffer = createBuffer(sizeof(vertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	m_indexBuffer = createBuffer(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	// 頂点データの書き込み
+	{
+		void* p;
+		vkMapMemory(m_device, m_vertexBuffer.memory, 0, VK_WHOLE_SIZE, 0, &p);
+		memcpy(p, vertices, sizeof(vertices));
+		vkUnmapMemory(m_device, m_vertexBuffer.memory);
+	}
+	// インデックスデータの書き込み
+	{
+		void* p;
+		vkMapMemory(m_device, m_indexBuffer.memory, 0, VK_WHOLE_SIZE, 0, &p);
+		memcpy(p, indices, sizeof(indices));
+		vkUnmapMemory(m_device, m_indexBuffer.memory);
+	}
+	m_indexCount = _countof(indices);
+}
+
+void SSRayMarching::prepareUniformBuffer()
+{
+	// ユニフォームバッファ
+	m_uniformBuffers.resize(m_swapchainViews.size());
+	for (auto& v : m_uniformBuffers)
+	{
+		VkMemoryPropertyFlags uboFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		v = createBuffer(sizeof(ShaderParameters), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
+	}
 }
 
 VkPipelineShaderStageCreateInfo SSRayMarching::loadShaderModule(const char* fileName, VkShaderStageFlagBits stage)
