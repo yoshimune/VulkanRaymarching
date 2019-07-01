@@ -3,6 +3,7 @@
 #include "../common/VulkanAppBase.h"
 #include "glm/glm.hpp"
 
+
 class SSRayMarching : public VulkanAppBase
 {
 public:
@@ -36,7 +37,12 @@ private:
 		glm::vec4 camera_side;
 		glm::vec4 light_pos;
 		glm::vec4 light_color;
+		glm::vec4 sky_color_light;
+		glm::vec4 sky_color;
 	};
+
+	const glm::vec3 lightBlue = glm::vec3(0.7f, 0.93f, 0.96f);
+	const glm::vec3 blue = glm::vec3(0.14f, 0.14f, 0.5f);
 
 	void prepareGeometry();
 	void prepareUniformBuffer();
@@ -44,6 +50,17 @@ private:
 
 	BufferObject createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags);
 	VkPipelineShaderStageCreateInfo loadShaderModule(const char* fileName, VkShaderStageFlagBits stage);
+
+	void createSkyboxPipelineInfo(
+		std::vector<VkPipelineShaderStageCreateInfo>* shaderStages,
+		VkPipelineDepthStencilStateCreateInfo* depthStencilCI,
+		VkPipelineColorBlendAttachmentState* blendAttachment,
+		VkPipelineColorBlendStateCreateInfo* cbCI);
+	void createAlphaPipelineInfo(
+		std::vector<VkPipelineShaderStageCreateInfo>* shaderStages,
+		VkPipelineDepthStencilStateCreateInfo* depthStencilCI,
+		VkPipelineColorBlendAttachmentState* blendAttachment,
+		VkPipelineColorBlendStateCreateInfo* cbCI);
 
 	void prepareDescriptorSetLayout();
 	void prepareDescriptorPool();
@@ -58,6 +75,7 @@ private:
 	std::vector<VkDescriptorSet> m_descriptorSet;
 
 	VkPipelineLayout m_pipelineLayout;
-	VkPipeline m_pipeline;
+	VkPipeline m_pipeline_skybox;
+	VkPipeline m_pipeline_alpha;
 	uint32_t m_indexCount;
 };

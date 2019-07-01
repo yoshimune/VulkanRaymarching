@@ -150,6 +150,7 @@
     <None Include="packages.config" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
+    <None Include="skyboxshader.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\common\VulkanAppBase.cpp" />

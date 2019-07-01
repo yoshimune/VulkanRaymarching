@@ -13,6 +13,9 @@ layout(std140) uniform Resolution
 
   vec4 light_pos;
   vec4 light_color;
+
+  vec4 sky_color_light;
+  vec4 sky_color;
 };
 
 // 球の距離関数
@@ -40,6 +43,13 @@ struct Ray {
 
 vec3 getColor(vec3 pos, vec3 normal, vec3 light_pos, vec3 light_color, vec3 camera_pos)
 {
+  // ambient Color
+  // NormalベクトルのY軸方向の射影の長さを基準に色を決定する
+  float NoY = dot(normal, vec3(0,1,0));
+  // 0 - 1に正規化する
+  float ambient_intencity = (NoY + 1.0) * 0.5;
+  vec3 ambient = mix(sky_color_light.xyz, sky_color.xyz, ambient_intencity);
+
   // diffuse
   vec3 light_diff = light_pos - pos;
   float NoL = clamp(dot(normal, normalize(light_diff)), 0, 1.0);
@@ -47,12 +57,13 @@ vec3 getColor(vec3 pos, vec3 normal, vec3 light_pos, vec3 light_color, vec3 came
   vec3 diffuse = (light_color * NoL) / (d*d);
 
   // edge
-  vec3 camera_dir = normalize(camera_pos - pos);
-  float NoV = clamp(dot(normal, camera_dir), 0, 1.0);
-  float edge_intencity = pow(1.0 - NoV, 2);
-  vec3 edge = light_color * edge_intencity * 0.1;
+  //vec3 camera_dir = normalize(camera_pos - pos);
+  //float NoV = clamp(dot(normal, camera_dir), 0, 1.0);
+  //float edge_intencity = pow(1.0 - NoV, 2);
+  //vec3 edge = light_color * edge_intencity * 0.1;
 
-  return max(diffuse, edge);
+  //return max(diffuse, edge);
+  return diffuse + ambient;
 }
 
 void main()
@@ -70,7 +81,7 @@ void main()
   ray.dir = normalize(pos.x * camera_side.xyz + pos.y * camera_up.xyz + camera_dir.xyz);
 
   float t = 0.0, d;
-  vec4 col = vec4(0, 0, 0, 1.0);
+  vec4 col = vec4(0, 0, 0, 0);
 
   // レイを飛ばす
   for(int i=0 ; i < 64 ; i++)

@@ -44,27 +44,6 @@ void SSRayMarching::prepare()
 	vertexInputCI.pVertexBindingDescriptions = &inputBinding;
 	vertexInputCI.vertexAttributeDescriptionCount = uint32_t(inputAttribs.size());
 	vertexInputCI.pVertexAttributeDescriptions = inputAttribs.data();
-
-
-	/* ブレンディングの設定 */
-	const auto colorWriteAll = \
-		VK_COLOR_COMPONENT_R_BIT | \
-		VK_COLOR_COMPONENT_G_BIT | \
-		VK_COLOR_COMPONENT_B_BIT | \
-		VK_COLOR_COMPONENT_A_BIT;
-	VkPipelineColorBlendAttachmentState blendAttachment{};
-	blendAttachment.blendEnable = VK_TRUE;
-	blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	blendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	blendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-	blendAttachment.colorWriteMask = colorWriteAll;
-	VkPipelineColorBlendStateCreateInfo cbCI{};
-	cbCI.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	cbCI.attachmentCount = 1;
-	cbCI.pAttachments = &blendAttachment;
 	
 
 	/* ビューポートの設定 */
@@ -107,48 +86,73 @@ void SSRayMarching::prepare()
 	multisampleCI.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampleCI.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-	// デプスステンシルステート設定
-	VkPipelineDepthStencilStateCreateInfo depthStencilCI{};
-	depthStencilCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencilCI.depthTestEnable = VK_TRUE;
-	depthStencilCI.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencilCI.depthWriteEnable = VK_TRUE;
-	depthStencilCI.stencilTestEnable = VK_FALSE;
-
-	// シェーダーバイナリ読み込み
-	vector<VkPipelineShaderStageCreateInfo> shaderStages
-	{
-		loadShaderModule("shader.vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
-		loadShaderModule("shader.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT)
-	};
-
 	// パイプラインレイアウト
 	VkPipelineLayoutCreateInfo pipelineLayoutCI{};
 	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCI.setLayoutCount = 1;
 	pipelineLayoutCI.pSetLayouts = &m_descriptorSetLayout;
 	vkCreatePipelineLayout(m_device, &pipelineLayoutCI, nullptr, &m_pipelineLayout);
-
-	// パイプラインの構築
-	VkGraphicsPipelineCreateInfo ci{};
-	ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	ci.stageCount = uint32_t(shaderStages.size());
-	ci.pStages = shaderStages.data();
-	ci.pInputAssemblyState = &inputAssemblyCI;
-	ci.pVertexInputState = &vertexInputCI;
-	ci.pRasterizationState = &rasterizerCI;
-	ci.pDepthStencilState = &depthStencilCI;
-	ci.pMultisampleState = &multisampleCI;
-	ci.pViewportState = &viewportCI;
-	ci.pColorBlendState = &cbCI;
-	ci.renderPass = m_renderPass;
-	ci.layout = m_pipelineLayout;
-	vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &ci, nullptr, &m_pipeline);
-
-	// ShaderModule はもう不要なので破棄
-	for (const auto& v : shaderStages)
+	
+	// SkyboxPipeline
 	{
-		vkDestroyShaderModule(m_device, v.module, nullptr);
+		VkPipelineColorBlendAttachmentState blendAttachment{};
+		VkPipelineColorBlendStateCreateInfo cbCI{};
+		VkPipelineDepthStencilStateCreateInfo depthStencilCI{};
+		vector<VkPipelineShaderStageCreateInfo> shaderStages{};
+		createSkyboxPipelineInfo(&shaderStages, &depthStencilCI, &blendAttachment, &cbCI);
+
+		// パイプラインの構築
+		VkGraphicsPipelineCreateInfo ci{};
+		ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		ci.stageCount = uint32_t(shaderStages.size());
+		ci.pStages = shaderStages.data();
+		ci.pInputAssemblyState = &inputAssemblyCI;
+		ci.pVertexInputState = &vertexInputCI;
+		ci.pRasterizationState = &rasterizerCI;
+		ci.pDepthStencilState = &depthStencilCI;
+		ci.pMultisampleState = &multisampleCI;
+		ci.pViewportState = &viewportCI;
+		ci.pColorBlendState = &cbCI;
+		ci.renderPass = m_renderPass;
+		ci.layout = m_pipelineLayout;
+		vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &ci, nullptr, &m_pipeline_skybox);
+
+		// ShaderModule はもう不要なので破棄
+		for (const auto& v : shaderStages)
+		{
+			vkDestroyShaderModule(m_device, v.module, nullptr);
+		}
+	}
+
+	// AlphaPipeline
+	{
+		VkPipelineColorBlendAttachmentState blendAttachment{};
+		VkPipelineColorBlendStateCreateInfo cbCI{};
+		VkPipelineDepthStencilStateCreateInfo depthStencilCI{};
+		vector<VkPipelineShaderStageCreateInfo> shaderStages{};
+		createAlphaPipelineInfo(&shaderStages, &depthStencilCI, &blendAttachment, &cbCI);
+
+		// パイプラインの構築
+		VkGraphicsPipelineCreateInfo ci{};
+		ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		ci.stageCount = uint32_t(shaderStages.size());
+		ci.pStages = shaderStages.data();
+		ci.pInputAssemblyState = &inputAssemblyCI;
+		ci.pVertexInputState = &vertexInputCI;
+		ci.pRasterizationState = &rasterizerCI;
+		ci.pDepthStencilState = &depthStencilCI;
+		ci.pMultisampleState = &multisampleCI;
+		ci.pViewportState = &viewportCI;
+		ci.pColorBlendState = &cbCI;
+		ci.renderPass = m_renderPass;
+		ci.layout = m_pipelineLayout;
+		vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &ci, nullptr, &m_pipeline_alpha);
+
+		// ShaderModule はもう不要なので破棄
+		for (const auto& v : shaderStages)
+		{
+			vkDestroyShaderModule(m_device, v.module, nullptr);
+		}
 	}
 }
 
@@ -162,7 +166,8 @@ void SSRayMarching::cleanup()
 	}
 
 	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
-	vkDestroyPipeline(m_device, m_pipeline, nullptr);
+	vkDestroyPipeline(m_device, m_pipeline_alpha, nullptr);
+	vkDestroyPipeline(m_device, m_pipeline_skybox, nullptr);
 
 	vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, nullptr);
@@ -176,31 +181,54 @@ void SSRayMarching::cleanup()
 // コマンド作成
 void SSRayMarching::makeCommand(VkCommandBuffer command)
 {
-	auto shaderParam = createShaderParameters();
 	{
-		auto memory = m_uniformBuffers[m_imageIndex].memory;
-		void* p;
-		vkMapMemory(m_device, memory, 0, VK_WHOLE_SIZE, 0, &p);
-		memcpy(p, &shaderParam, sizeof(shaderParam));
-		vkUnmapMemory(m_device, memory);
+		// skybox
+		// 作成したパイプラインをセット
+		vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_skybox);
+
+		// 各バッファオブジェクトのセット
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(command, 0, 1, &m_vertexBuffer.buffer, &offset);
+		vkCmdBindIndexBuffer(command, m_indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
+
+		// ディスクリプタセットをセット
+		//VkDescriptorSet descriptorSets[] = {
+		//	m_descriptorSet[m_imageIndex]
+		//};
+		//vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, descriptorSets, 0, nullptr);
+
+		// 三角形描画
+		vkCmdDrawIndexed(command, m_indexCount, 1, 0, 0, 0);
 	}
 
-	// 作成したパイプラインをセット
-	vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+	{
+		// Alpha
+		auto shaderParam = createShaderParameters();
+		{
+			auto memory = m_uniformBuffers[m_imageIndex].memory;
+			void* p;
+			vkMapMemory(m_device, memory, 0, VK_WHOLE_SIZE, 0, &p);
+			memcpy(p, &shaderParam, sizeof(shaderParam));
+			vkUnmapMemory(m_device, memory);
+		}
 
-	// 各バッファオブジェクトのセット
-	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(command, 0, 1, &m_vertexBuffer.buffer, &offset);
-	vkCmdBindIndexBuffer(command, m_indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
+		// 作成したパイプラインをセット
+		vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_alpha);
 
-	// ディスクリプタセットをセット
-	VkDescriptorSet descriptorSets[] = {
-		m_descriptorSet[m_imageIndex]
-	};
-	vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, descriptorSets, 0, nullptr);
+		// 各バッファオブジェクトのセット
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(command, 0, 1, &m_vertexBuffer.buffer, &offset);
+		vkCmdBindIndexBuffer(command, m_indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
 
-	// 三角形描画
-	vkCmdDrawIndexed(command, m_indexCount, 1, 0, 0, 0);
+		// ディスクリプタセットをセット
+		VkDescriptorSet descriptorSets[] = {
+			m_descriptorSet[m_imageIndex]
+		};
+		vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, descriptorSets, 0, nullptr);
+
+		// 三角形描画
+		vkCmdDrawIndexed(command, m_indexCount, 1, 0, 0, 0);
+	}
 }
 
 
@@ -247,7 +275,6 @@ SSRayMarching::ShaderParameters SSRayMarching::createShaderParameters()
 
 	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 0, 1.0));
 	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 0, 3.0));
-	//shaderParam.light_pos = vec4(1.0f, -2.5f, 1.0f, 0.0f);
 	shaderParam.light_pos = translation * rotation * vec4(0.0f, -1.0f, -3.0f, 1.0f);
 
 	//printf("%s \n", glm::to_string(rotation));
@@ -260,21 +287,25 @@ SSRayMarching::ShaderParameters SSRayMarching::createShaderParameters()
 	//printf("\n");
 
 	shaderParam.light_color = vec4(4.0f, 5.0f, 6.0f, 0.0f);
+	shaderParam.sky_color = vec4(blue, 0.0f);
+	shaderParam.sky_color_light = vec4(lightBlue, 0.0f);
 	return shaderParam;
 }
 
 void SSRayMarching::prepareGeometry()
 {
 	/* VERTEX */
-	const vec3 red(1.0f, 0.0f, 0.0f);
-	const vec3 green(0.0f, 1.0f, 0.0f);
-	const vec3 blue(0.0f, 0.0f, 1.0f);
+	//const vec3 red(1.0f, 0.0f, 0.0f);
+	//const vec3 green(0.0f, 1.0f, 0.0f);
+	//const vec3 blue(0.0f, 0.0f, 1.0f);
+	//const vec3 lightBlue(0.7f, 0.93f, 0.96f);
+	//const vec3 blue(0.14f, 0.14f, 0.5f);
 
 	Vertex vertices[] = {
-		{ vec3(-1.0f, 1.0f, 0.0f), red },
-		{ vec3(-1.0f, -1.0f, 0.0f), green},
+		{ vec3(-1.0f, 1.0f, 0.0f), blue },
+		{ vec3(-1.0f, -1.0f, 0.0f), lightBlue},
 		{ vec3(1.0f, 1.0f, 0.0f), blue },
-		{ vec3(1.0f, -1.0f, 0.0f), red },
+		{ vec3(1.0f, -1.0f, 0.0f), lightBlue },
 	};
 	uint32_t indices[] = { 0,1,2, 2,1,3 };
 
@@ -333,6 +364,78 @@ VkPipelineShaderStageCreateInfo SSRayMarching::loadShaderModule(const char* file
 	shaderStageCI.module = shaderModule;
 	shaderStageCI.pName = "main";
 	return shaderStageCI;
+}
+
+void SSRayMarching::createSkyboxPipelineInfo(
+	vector<VkPipelineShaderStageCreateInfo>* shaderStages,
+	VkPipelineDepthStencilStateCreateInfo* depthStencilCI,
+	VkPipelineColorBlendAttachmentState* blendAttachment,
+	VkPipelineColorBlendStateCreateInfo* cbCI)
+{
+	/* ブレンディングの設定 */
+	const auto colorWriteAll = \
+		VK_COLOR_COMPONENT_R_BIT | \
+		VK_COLOR_COMPONENT_G_BIT | \
+		VK_COLOR_COMPONENT_B_BIT | \
+		VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment->blendEnable = VK_TRUE;
+	blendAttachment->srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachment->dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	blendAttachment->srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachment->dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	blendAttachment->colorBlendOp = VK_BLEND_OP_ADD;
+	blendAttachment->alphaBlendOp = VK_BLEND_OP_ADD;
+	blendAttachment->colorWriteMask = colorWriteAll;
+	cbCI->sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	cbCI->attachmentCount = 1;
+	cbCI->pAttachments = blendAttachment;
+
+	// デプスステンシルステート設定
+	depthStencilCI->sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilCI->depthTestEnable = VK_TRUE;
+	depthStencilCI->depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencilCI->depthWriteEnable = VK_TRUE;
+	depthStencilCI->stencilTestEnable = VK_FALSE;
+
+	// シェーダーバイナリ読み込み
+	shaderStages->push_back(loadShaderModule("shader.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+	shaderStages->push_back(loadShaderModule("skyboxshader.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
+}
+
+void SSRayMarching::createAlphaPipelineInfo(
+	vector<VkPipelineShaderStageCreateInfo>* shaderStages,
+	VkPipelineDepthStencilStateCreateInfo* depthStencilCI,
+	VkPipelineColorBlendAttachmentState* blendAttachment,
+	VkPipelineColorBlendStateCreateInfo* cbCI)
+{
+	/* ブレンディングの設定 */
+	const auto colorWriteAll = \
+		VK_COLOR_COMPONENT_R_BIT | \
+		VK_COLOR_COMPONENT_G_BIT | \
+		VK_COLOR_COMPONENT_B_BIT | \
+		VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment->blendEnable = VK_TRUE;
+	blendAttachment->srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	blendAttachment->dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment->srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	blendAttachment->dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment->colorBlendOp = VK_BLEND_OP_ADD;
+	blendAttachment->alphaBlendOp = VK_BLEND_OP_ADD;
+	blendAttachment->colorWriteMask = colorWriteAll;
+	cbCI->sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	cbCI->attachmentCount = 1;
+	cbCI->pAttachments = blendAttachment;
+
+	// デプスステンシルステート設定
+	depthStencilCI->sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilCI->depthTestEnable = VK_TRUE;
+	depthStencilCI->depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencilCI->depthWriteEnable = VK_FALSE;
+	depthStencilCI->stencilTestEnable = VK_FALSE;
+
+	// シェーダーバイナリ読み込み
+	shaderStages->push_back(loadShaderModule("shader.vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
+	shaderStages->push_back(loadShaderModule("shader.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
 }
 
 void SSRayMarching::prepareDescriptorSetLayout()
