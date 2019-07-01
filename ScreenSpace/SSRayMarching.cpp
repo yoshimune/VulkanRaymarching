@@ -275,7 +275,7 @@ SSRayMarching::ShaderParameters SSRayMarching::createShaderParameters()
 
 	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 0, 1.0));
 	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 0, 3.0));
-	shaderParam.light_pos = translation * rotation * vec4(0.0f, -1.0f, -3.0f, 1.0f);
+	shaderParam.light_pos = translation * rotation * vec4(0.0f, -2.0f, -3.0f, 1.0f);
 
 	//printf("%s \n", glm::to_string(rotation));
 

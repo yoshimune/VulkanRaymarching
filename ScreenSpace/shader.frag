@@ -25,6 +25,12 @@ float sphere_d(vec3 p){
   return length(p - sphere_pos) - r;
 }
 
+float sphere2_d(vec3 p) {
+  const vec3 sphere_pos = light_pos.xyz;
+  const float r = 0.5;
+  return length(p - sphere_pos) - r;
+}
+
 // 法線ベクトル
 vec3 sphere_normal(vec3 pos){
   float delta = 0.001;
@@ -36,12 +42,23 @@ vec3 sphere_normal(vec3 pos){
   );
 }
 
+// 法線ベクトル2
+vec3 sphere2_normal(vec3 pos){
+  float delta = 0.001;
+  return normalize( 
+    vec3 (
+      sphere2_d(pos + vec3(delta, 0.0, 0.0)) - sphere2_d(pos),
+      sphere2_d(pos + vec3(0.0, delta, 0.0)) - sphere2_d(pos),
+      sphere2_d(pos + vec3(0.0, 0.0, delta)) - sphere2_d(pos))
+  );
+}
+
 struct Ray {
   vec3 pos;
   vec3 dir;
 };
 
-vec3 getColor(vec3 pos, vec3 normal, vec3 light_pos, vec3 light_color, vec3 camera_pos)
+vec3 getColor(vec3 pos, vec3 normal, vec3 light_pos, vec3 light_color)
 {
   // ambient Color
   // NormalベクトルのY軸方向の射影の長さを基準に色を決定する
@@ -66,12 +83,15 @@ vec3 getColor(vec3 pos, vec3 normal, vec3 light_pos, vec3 light_color, vec3 came
   return diffuse + ambient;
 }
 
+float getAlpha2(vec3 pos)
+{
+  float d = distance(pos.xy, light_pos.xy);
+  //return d;
+  return pow(1.0 - (d*2), 5) * 2.0;
+}
+
 void main()
 {
-  //vec3 col = normalize(-camera_pos);
-  //vec3 col = camera_pos.xyz;
-  //outColor = vec4(col.x, col.y, col.z, 1.0);
-  
   // 画面座標の正規化。
   vec2 pos = (gl_FragCoord.xy * 2.0 - resolution.xy) / max(resolution.x, resolution.y);
 
@@ -80,22 +100,29 @@ void main()
   ray.pos = camera_pos.xyz;
   ray.dir = normalize(pos.x * camera_side.xyz + pos.y * camera_up.xyz + camera_dir.xyz);
 
-  float t = 0.0, d;
+  float t = 0.0, d, d2;
   vec4 col = vec4(0, 0, 0, 0);
 
   // レイを飛ばす
   for(int i=0 ; i < 64 ; i++)
   {
     d = sphere_d(ray.pos);
+	d2 = sphere2_d(ray.pos);
 	
 	// ヒットした
 	if(d < 0.001){
-	  col = vec4(getColor(ray.pos, sphere_normal(ray.pos), light_pos.xyz, light_color.xyz, camera_pos.xyz), 1.0);
+	  col = vec4(getColor(ray.pos, sphere_normal(ray.pos), light_pos.xyz, light_color.xyz), 1.0);
+	  break;
+	}
+	if(d2 < 0.001) {
+	  col = vec4(light_color.xyz, getAlpha2(ray.pos));
+	  //float c = getAlpha2(ray.pos);
+	  //col = vec4(c,c,c, 1.0);
 	  break;
 	}
 
 	// 次のレイは最小距離d * ray.dir のぶんだけ進める
-	t += d;
+	t += min(d, d2);
 	ray.pos = camera_pos.xyz + t * ray.dir;
   }
 
