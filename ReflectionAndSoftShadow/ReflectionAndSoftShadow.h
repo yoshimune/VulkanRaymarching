@@ -41,8 +41,8 @@ private:
 		glm::vec4 sky_color;
 	};
 
-	const glm::vec3 lightBlue = glm::vec3(0.6f, 0.7f, 0.9f);
-	const glm::vec3 blue = glm::vec3(0.1f, 0.1f, 0.5f);
+	const glm::vec3 lightBlue = glm::vec3(0.7f, 0.8f, 0.99f);
+	const glm::vec3 blue = glm::vec3(0.1f, 0.1f, 0.6f);
 
 	void prepareGeometry();
 	void prepareUniformBuffer();
