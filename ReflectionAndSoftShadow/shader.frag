@@ -3,7 +3,7 @@
 layout(location=0) in vec4 inColor;
 layout(location=0) out vec4 outColor;
 
-layout(std140) uniform Resolution
+layout(binding = 0) uniform BasicInfo
 {
   vec4 resolution;
   vec4 camera_pos;
@@ -18,39 +18,33 @@ layout(std140) uniform Resolution
   vec4 sky_color;
 };
 
+layout(binding = 1) uniform Materials
+{
+  vec4 sphere;	// xyz:position w:radius
+  vec4 box;		// xyz:position w:size
+  vec4 torus_pos;
+  vec4 torus_size;
+  vec4 hexPrizm_pos;
+  vec4 hexPrizm_size;
+  vec4 octahedron; // xyz:position w:size
+}mat;
+
+
 // 球の距離関数
 float sphere_d(vec3 rp){
-  vec3 sp = vec3(0,0,0);
+  //vec3 sp = vec3(0,0,0);
+  vec3 sp = mat.sphere.xyz;
   vec3 rsp = rp - sp;
-  float r = 1.0;
+  float r = mat.sphere.w;
   return length(rsp) - r;
-}
-
-// Box
-float box_d(vec3 rp)
-{
-  vec3 bp = vec3(0, 2.0, 0);
-  vec3 b = vec3(0.5, 0.5, 0.5);
-  vec3 d = abs(rp - bp) - b;
-  return length(max(d,0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
-}
-
-// Round Box
-float refbox_d(vec3 rp)
-{
-  float r = 0.1;
-  vec3 bp = vec3(0, 0, 0);
-  vec3 b = vec3(0.5, 0.5, 0.5);
-  vec3 d = abs(rp - bp) - b;
-  return length(max(d, 0.0)) - r + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
 // Round Box
 float rbox_d(vec3 rp)
 {
   float r = 0.1;
-  vec3 bp = vec3(0, -2.0, 0);
-  vec3 b = vec3(0.5, 0.5, 0.5);
+  vec3 bp = mat.box.xyz;
+  vec3 b = vec3(mat.box.w);
   vec3 d = abs(rp - bp) - b;
   return length(max(d, 0.0)) - r + min(max(d.x, max(d.y, d.z)), 0.0);
 }
@@ -58,8 +52,8 @@ float rbox_d(vec3 rp)
 // Torus
 float torus_d(vec3 rp)
 {
-  vec2 t = vec2(0.5, 0.2);
-  vec3 p = rp - vec3(2.0, 0, 0);
+  vec2 t = mat.torus_size.xy;
+  vec3 p = rp - mat.torus_pos.xyz;
   vec2 q = vec2(length (p.xy) - t.x, p.z);
   return length(q) - t.y;
 }
@@ -67,8 +61,8 @@ float torus_d(vec3 rp)
 // Hexagonal Prism
 float hexPrizm_d(vec3 rp)
 {
-  vec2 h = vec2(0.5, 0.25);
-  vec3 p = rp - vec3(-2.0, 0, 0);
+  vec2 h = mat.hexPrizm_size.xy;
+  vec3 p = rp - mat.hexPrizm_pos.xyz;
   const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
   p = abs(p);
   p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
@@ -80,8 +74,8 @@ float hexPrizm_d(vec3 rp)
 // Octahedron
 float octahedron_d(vec3 rp)
 {
-  float s = 0.5;
-  vec3 p = abs(rp - vec3(0, 2.0, 0));
+  float s = mat.octahedron.w;
+  vec3 p = abs(rp - mat.octahedron.xyz);
   return ((p.x+p.y+p.z-s)*0.57735027);
 }
 
@@ -132,7 +126,6 @@ vec3 calcNormal(vec3 pos)
 // 反射距離関数
 float reflectionDistance(vec3 pos)
 {
-  //return mix(sphere_d(pos), refbox_d(pos), 0.25);
   return sphere_d(pos);
 }
 
@@ -184,27 +177,6 @@ vec3 getColor(vec3 pos, vec3 normal, vec3 light_dir, vec3 light_color)
 
   return albedo * (diffuse + ambient);
 }
-
-// 色を決定する（平面ライティング）
-/*vec3 getColor_plane(vec3 pos, vec3 normal, vec3 light_dir, vec3 light_color)
-{
-  float u = (floor(mod(pos.x, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
-  float v = (floor(mod(pos.z, 2.0)) - 0.5) * 2;
-  vec3 albedo = mix(vec3(0.9, 0.9, 0.9), vec3(0.5, 0.5, 0.5), u*v);
-
-  // ambient Color
-  // NormalベクトルのY軸方向の射影の長さを基準に色を決定する
-  float NoY = dot(normal, vec3(0,1,0));
-  // 0 - 1に正規化する
-  float ambient_intencity = (NoY + 1.0) * 0.5;
-  vec3 ambient = mix(sky_color_light.xyz, sky_color.xyz, ambient_intencity) * albedo;
-
-  // diffuse
-  float NoL = dot(normal, light_dir);
-  vec3 diffuse = max(light_color * NoL, vec3(0)) * albedo;
-
-  return albedo * (diffuse + ambient);
-}*/
 
 vec3 getColor_plane(vec3 pos)
 {

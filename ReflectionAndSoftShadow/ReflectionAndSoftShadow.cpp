@@ -130,8 +130,10 @@ void ReflectionAndSoftShadow::cleanup()
 {
 	for (auto& v : m_uniformBuffers)
 	{
-		vkDestroyBuffer(m_device, v.buffer, nullptr);
-		vkFreeMemory(m_device, v.memory, nullptr);
+		vkDestroyBuffer(m_device, v.shaderParameters.buffer, nullptr);
+		vkFreeMemory(m_device, v.shaderParameters.memory, nullptr);
+		vkDestroyBuffer(m_device, v.shaderMaterials.buffer, nullptr);
+		vkFreeMemory(m_device, v.shaderMaterials.memory, nullptr);
 	}
 
 	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
@@ -150,13 +152,21 @@ void ReflectionAndSoftShadow::cleanup()
 void ReflectionAndSoftShadow::makeCommand(VkCommandBuffer command)
 {
 	{
-		// Alpha
 		auto shaderParam = createShaderParameters();
 		{
-			auto memory = m_uniformBuffers[m_imageIndex].memory;
+			auto memory = m_uniformBuffers[m_imageIndex].shaderParameters.memory;
 			void* p;
 			vkMapMemory(m_device, memory, 0, VK_WHOLE_SIZE, 0, &p);
 			memcpy(p, &shaderParam, sizeof(shaderParam));
+			vkUnmapMemory(m_device, memory);
+		}
+
+		auto shaderMaterial = createShaderMaterials();
+		{
+			auto memory = m_uniformBuffers[m_imageIndex].shaderMaterials.memory;
+			void* p;
+			vkMapMemory(m_device, memory, 0, VK_WHOLE_SIZE, 0, &p);
+			memcpy(p, &shaderMaterial, sizeof(shaderMaterial));
 			vkUnmapMemory(m_device, memory);
 		}
 
@@ -218,7 +228,7 @@ ReflectionAndSoftShadow::ShaderParameters ReflectionAndSoftShadow::createShaderP
 	shaderParam.resolution = vec4(width, height, 0.0f, 0.0f);
 
 
-	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(45.0 * currentTime)), glm::vec3(0, 1.0, 0));
+	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(30.0 * currentTime)), glm::vec3(0, 1.0, 0));
 	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 1.0, -4.0));
 
 	shaderParam.camera_pos = rotation * translation * vec4(0, 0, 0, 1.0);
@@ -246,6 +256,20 @@ ReflectionAndSoftShadow::ShaderParameters ReflectionAndSoftShadow::createShaderP
 	shaderParam.sky_color = vec4(blue, 0.0f);
 	shaderParam.sky_color_light = vec4(lightBlue, 0.0f);
 	return shaderParam;
+}
+
+ReflectionAndSoftShadow::ShaderMaterials ReflectionAndSoftShadow::createShaderMaterials()
+{
+	// ユニフォームバッファの中身を更新する
+	ShaderMaterials shaderMaterial{};
+	shaderMaterial.sphere = vec4(0, 0, 0, 1.0f);
+	shaderMaterial.box = vec4(0, -2.0f, 0, 0.5f);
+	shaderMaterial.torus_pos = vec4(2.0f, 0, 0, 1.0f);
+	shaderMaterial.torus_size = vec4(0.5f, 0.2f, 0, 0);
+	shaderMaterial.hexPrizm_pos = vec4(-2.0f, 0, 0, 1.0);
+	shaderMaterial.hexPrizm_size = vec4(0.5f, 0.25f, 0, 0);
+	shaderMaterial.octahedron = vec4(0, 2.0f, 0, 0.5f);
+	return shaderMaterial;
 }
 
 void ReflectionAndSoftShadow::prepareGeometry()
@@ -285,7 +309,8 @@ void ReflectionAndSoftShadow::prepareUniformBuffer()
 	for (auto& v : m_uniformBuffers)
 	{
 		VkMemoryPropertyFlags uboFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		v = createBuffer(sizeof(ShaderParameters), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
+		v.shaderParameters = createBuffer(sizeof(ShaderParameters), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
+		v.shaderMaterials = createBuffer(sizeof(ShaderMaterials), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
 	}
 }
 
@@ -354,12 +379,24 @@ void ReflectionAndSoftShadow::createAlphaPipelineInfo(
 void ReflectionAndSoftShadow::prepareDescriptorSetLayout()
 {
 	vector<VkDescriptorSetLayoutBinding> bindings;
-	VkDescriptorSetLayoutBinding bindingUBO{};
-	bindingUBO.binding = 0;
-	bindingUBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	bindingUBO.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	bindingUBO.descriptorCount = 1;
-	bindings.push_back(bindingUBO);
+	{
+		// ShaderParams
+		VkDescriptorSetLayoutBinding bindingUBO{};
+		bindingUBO.binding = 0;
+		bindingUBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		bindingUBO.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		bindingUBO.descriptorCount = 1;
+		bindings.push_back(bindingUBO);
+	}
+	{
+		// Materials
+		VkDescriptorSetLayoutBinding bindingUBO{};
+		bindingUBO.binding = 1;
+		bindingUBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		bindingUBO.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		bindingUBO.descriptorCount = 1;
+		bindings.push_back(bindingUBO);
+	}
 
 	VkDescriptorSetLayoutCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -370,9 +407,11 @@ void ReflectionAndSoftShadow::prepareDescriptorSetLayout()
 
 void ReflectionAndSoftShadow::prepareDescriptorPool()
 {
-	array<VkDescriptorPoolSize, 1> descPoolSize;
+	array<VkDescriptorPoolSize, 2> descPoolSize;
 	descPoolSize[0].descriptorCount = 1;
 	descPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descPoolSize[1].descriptorCount = 1;
+	descPoolSize[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 	VkDescriptorPoolCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -401,7 +440,7 @@ void ReflectionAndSoftShadow::prepareDescriptorSet()
 	for (int i = 0;i<int(m_uniformBuffers.size()); ++i)
 	{
 		VkDescriptorBufferInfo descUBO{};
-		descUBO.buffer = m_uniformBuffers[i].buffer;
+		descUBO.buffer = m_uniformBuffers[i].shaderParameters.buffer;
 		descUBO.offset = 0;
 		descUBO.range = VK_WHOLE_SIZE;
 
@@ -413,8 +452,21 @@ void ReflectionAndSoftShadow::prepareDescriptorSet()
 		ubo.pBufferInfo = &descUBO;
 		ubo.dstSet = m_descriptorSet[i];
 
+		VkDescriptorBufferInfo descUBO2{};
+		descUBO2.buffer = m_uniformBuffers[i].shaderMaterials.buffer;
+		descUBO2.offset = 0;
+		descUBO2.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet ubo2{};
+		ubo2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		ubo2.dstBinding = 1;
+		ubo2.descriptorCount = 1;
+		ubo2.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubo2.pBufferInfo = &descUBO2;
+		ubo2.dstSet = m_descriptorSet[i];
+
 		vector<VkWriteDescriptorSet> writeSets = {
-			ubo
+			ubo, ubo2
 		};
 		vkUpdateDescriptorSets(m_device, uint32_t(writeSets.size()), writeSets.data(), 0, nullptr);
 	}

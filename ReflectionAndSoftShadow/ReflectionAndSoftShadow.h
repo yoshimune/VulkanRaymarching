@@ -28,6 +28,12 @@ private:
 		VkDeviceMemory memory;	// デバイスメモリオブジェクトのOpaqueハンドル
 	};
 
+	struct UniformBufferObject
+	{
+		BufferObject shaderParameters;
+		BufferObject shaderMaterials;
+	};
+
 	struct ShaderParameters
 	{
 		glm::vec4 resolution;
@@ -40,6 +46,17 @@ private:
 		glm::vec4 sky_color_light;
 		glm::vec4 sky_color;
 	};
+	struct ShaderMaterials
+	{
+		glm::vec4 sphere;
+		glm::vec4 box;
+		glm::vec4 torus_pos;
+		glm::vec4 torus_size;
+		glm::vec4 hexPrizm_pos;
+		glm::vec4 hexPrizm_size;
+		glm::vec4 octahedron;
+	};
+
 
 	const glm::vec3 lightBlue = glm::vec3(0.7f, 0.8f, 0.99f);
 	const glm::vec3 blue = glm::vec3(0.1f, 0.1f, 0.6f);
@@ -47,6 +64,7 @@ private:
 	void prepareGeometry();
 	void prepareUniformBuffer();
 	ShaderParameters createShaderParameters();
+	ShaderMaterials createShaderMaterials();
 
 	BufferObject createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags);
 	VkPipelineShaderStageCreateInfo loadShaderModule(const char* fileName, VkShaderStageFlagBits stage);
@@ -63,7 +81,7 @@ private:
 
 	BufferObject m_vertexBuffer;
 	BufferObject m_indexBuffer;
-	std::vector<BufferObject> m_uniformBuffers;
+	std::vector<UniformBufferObject> m_uniformBuffers;
 
 	VkDescriptorSetLayout m_descriptorSetLayout;
 	VkDescriptorPool m_descriptorPool;
