@@ -53,17 +53,12 @@ private:
 		glm::vec4 box;
 		glm::vec4 torus_pos;
 		glm::vec4 torus_size;
-		glm::vec4 hexPrizm_pos;
-		glm::vec4 hexPrizm_size;
-		glm::vec4 octahedron;
 		glm::float32 l;
 	};
 	struct ShaderTransforms
 	{
 		glm::mat4 rotation_sphere;
-		glm::mat4 rotation_torus1;
-		glm::mat4 rotation_torus2;
-		glm::mat4 rotation_torus3;
+		glm::mat4 rotation_torus;
 	};
 
 

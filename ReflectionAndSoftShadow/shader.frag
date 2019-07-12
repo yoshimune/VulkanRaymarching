@@ -24,18 +24,13 @@ layout(binding = 1) uniform Materials
   vec4 box;		// xyz:position w:size
   vec4 torus_pos;
   vec4 torus_size;
-  vec4 hexPrizm_pos;
-  vec4 hexPrizm_size;
-  vec4 octahedron; // xyz:position w:size
   float l;	// linear interpolation sphere and box
 }mat;
 
 layout(binding = 2) uniform Transform
 {
   mat4 rotation_sphere;
-  mat4 rotation_torus1;
-  mat4 rotation_torus2;
-  mat4 rotation_torus3;
+  mat4 rotation_torus;
 }transform;
 
 vec3 rotate(vec3 p, mat4 rotation)
@@ -56,15 +51,6 @@ float sphere_d(vec3 p){
   return mix(sphere, box, mat.l);
 }
 
-// Round Box
-float rbox_d(vec3 p)
-{
-  float r = 0.1;
-  vec3 b = vec3(mat.box.w);
-  vec3 d = abs(p) - b;
-  return length(max(d, 0.0)) - r + min(max(d.x, max(d.y, d.z)), 0.0);
-}
-
 // Torus
 float torus_d(vec3 p)
 {
@@ -78,25 +64,6 @@ float torus_d(vec3 p)
   float d3 = length(q3) - mat.torus_size.y;
 
   return min(min(d1, d2), d3);
-}
-
-// Hexagonal Prism
-float hexPrizm_d(vec3 p)
-{
-  vec2 h = mat.hexPrizm_size.xy;
-  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
-  p = abs(p);
-  p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
-  vec2 d = vec2(
-    length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x), p.z-h.y);
-  return min(max(d.x, d.y), 0.0) + length(max(d,0.0)) - 0.1;
-}
-
-// Octahedron
-float octahedron_d(vec3 p)
-{
-  p = abs(p);
-  return ((p.x+p.y+p.z-mat.octahedron.w)*0.57735027);
 }
 
 
@@ -129,7 +96,7 @@ vec3 reflectionPlane(vec3 pos, vec3 dir)
 // 距離関数（総合）
 float distanceFunc(vec3 pos)
 {
-  return torus_d(rotate(pos - mat.torus_pos.xyz, transform.rotation_torus1));
+  return torus_d(rotate(pos - mat.torus_pos.xyz, transform.rotation_torus));
 }
 
 
@@ -169,7 +136,7 @@ struct Ray {
 
 vec3 getAlbedo(vec3 pos)
 {
-  pos = rotate(pos, transform.rotation_torus1);
+  pos = rotate(pos, transform.rotation_torus);
   float u = (floor(mod(pos.x * 2.0, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
   float v = (floor(mod(pos.y * 2.0, 2.0)) - 0.5) * 2;
   float w = (floor(mod(pos.z * 2.0, 2.0)) - 0.5) * 2;
@@ -250,7 +217,6 @@ vec3 getRay(Ray ray)
 	  d = min(d, dr1);
 	}
 
-	
 	// 平面
 	// ヒットした
 	dr2 = planey_d(ray.pos);

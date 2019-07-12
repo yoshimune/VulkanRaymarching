@@ -274,9 +274,6 @@ ReflectionAndSoftShadow::ShaderMaterials ReflectionAndSoftShadow::createShaderMa
 	shaderMaterial.box = vec4(0, -2.0f, 0, 0.8f);
 	shaderMaterial.torus_pos = vec4(0, 0, 0, 1.0f);
 	shaderMaterial.torus_size = vec4(2.5f, 0.15f, 0, 0);
-	shaderMaterial.hexPrizm_pos = vec4(-2.0f, 0, 0, 1.0);
-	shaderMaterial.hexPrizm_size = vec4(0.5f, 0.25f, 0, 0);
-	shaderMaterial.octahedron = vec4(0, 2.0f, 0, 0.5f);
 	shaderMaterial.l = (glm::sin(M_PI * currentTime * 0.5) + 1.0f) * 0.5f;
 	return shaderMaterial;
 }
@@ -301,38 +298,17 @@ ReflectionAndSoftShadow::ShaderTransforms ReflectionAndSoftShadow::createShaderT
 			float(glm::sin(M_PI * currentTime * 0.25) * M_PI),
 			glm::vec3(0, -1.0, 0));
 
-	shaderTransforms.rotation_torus1 =
+	shaderTransforms.rotation_torus =
 		glm::rotate(
 			glm::identity<glm::mat4>(),
 			float(glm::sin(M_PI * currentTime * 0.25) * M_PI),
 			glm::vec3(0, -1.0, 0));
-	shaderTransforms.rotation_torus1 *=
+	shaderTransforms.rotation_torus *=
 		glm::rotate(
 			glm::identity<glm::mat4>(),
 			glm::radians(float(30.0 * currentTime)),
 			glm::vec3(0, 0, 1.0));
 
-	shaderTransforms.rotation_torus2 =
-		glm::rotate(
-			glm::identity<glm::mat4>(),
-			float(glm::cos(M_PI * currentTime * 0.25) * M_PI),
-			glm::vec3(0, 1.0, 0));
-	shaderTransforms.rotation_torus2 *=
-		glm::rotate(
-			glm::identity<glm::mat4>(),
-			glm::radians(float(30.0 * currentTime)),
-			glm::vec3(0, 0, -1.0));
-
-	shaderTransforms.rotation_torus3 =
-		glm::rotate(
-			glm::identity<glm::mat4>(),
-			float(glm::sin(M_PI * ((currentTime + 0.5) * 0.25)) * M_PI),
-			glm::vec3(1.0, 0, 0));
-	shaderTransforms.rotation_torus3 *=
-		glm::rotate(
-			glm::identity<glm::mat4>(),
-			glm::radians(float(30.0 * currentTime)),
-			glm::vec3(0, 1.0, 0));
 	return shaderTransforms;
 }
 
