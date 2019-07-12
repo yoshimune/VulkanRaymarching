@@ -29,54 +29,57 @@ layout(binding = 1) uniform Materials
   vec4 octahedron; // xyz:position w:size
 }mat;
 
+layout(binding = 2) uniform Transform
+{
+  mat4 rotation;
+}transform;
+
+vec3 rotate(vec3 p)
+{
+  vec4 pos = vec4(p, 0);
+  pos = transform.rotation * pos;
+  return pos.xyz;
+}
+
 
 // 球の距離関数
-float sphere_d(vec3 rp){
-  //vec3 sp = vec3(0,0,0);
-  vec3 sp = mat.sphere.xyz;
-  vec3 rsp = rp - sp;
-  float r = mat.sphere.w;
-  return length(rsp) - r;
+float sphere_d(vec3 p){
+  return length(p) - mat.sphere.w;
 }
 
 // Round Box
-float rbox_d(vec3 rp)
+float rbox_d(vec3 p)
 {
   float r = 0.1;
-  vec3 bp = mat.box.xyz;
   vec3 b = vec3(mat.box.w);
-  vec3 d = abs(rp - bp) - b;
+  vec3 d = abs(p) - b;
   return length(max(d, 0.0)) - r + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
 // Torus
-float torus_d(vec3 rp)
+float torus_d(vec3 p)
 {
-  vec2 t = mat.torus_size.xy;
-  vec3 p = rp - mat.torus_pos.xyz;
-  vec2 q = vec2(length (p.xy) - t.x, p.z);
-  return length(q) - t.y;
+  vec2 q = vec2(length (p.xy) - mat.torus_size.x, p.z);
+  return length(q) - mat.torus_size.y;
 }
 
 // Hexagonal Prism
-float hexPrizm_d(vec3 rp)
+float hexPrizm_d(vec3 p)
 {
   vec2 h = mat.hexPrizm_size.xy;
-  vec3 p = rp - mat.hexPrizm_pos.xyz;
   const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
   p = abs(p);
   p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
   vec2 d = vec2(
-    length(p.xy - vec2(clamp(p.x, -k.z*h.x, k.z*h.x), h.x))*sign(p.y-h.x), p.z-h.y);
+    length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x), p.z-h.y);
   return min(max(d.x, d.y), 0.0) + length(max(d,0.0)) - 0.1;
 }
 
 // Octahedron
-float octahedron_d(vec3 rp)
+float octahedron_d(vec3 p)
 {
-  float s = mat.octahedron.w;
-  vec3 p = abs(rp - mat.octahedron.xyz);
-  return ((p.x+p.y+p.z-s)*0.57735027);
+  p = abs(p);
+  return ((p.x+p.y+p.z-mat.octahedron.w)*0.57735027);
 }
 
 
@@ -109,7 +112,14 @@ vec3 reflectionPlane(vec3 pos, vec3 dir)
 // 距離関数（総合）
 float distanceFunc(vec3 pos)
 {
-  return min(min(min(octahedron_d(pos), rbox_d(pos)), torus_d(pos)), hexPrizm_d(pos));
+  //return min(
+    //       min(
+		//     min(
+			//   octahedron_d(pos - mat.octahedron.xyz),
+			  // rbox_d(pos - mat.box.xyz)),
+			   //torus_d(pos - mat.torus_pos.xyz)),
+			   //hexPrizm_d(pos - mat.hexPrizm_pos.xyz));
+  return torus_d(rotate(pos - mat.torus_pos.xyz));
 }
 
 
@@ -126,7 +136,7 @@ vec3 calcNormal(vec3 pos)
 // 反射距離関数
 float reflectionDistance(vec3 pos)
 {
-  return sphere_d(pos);
+  return sphere_d(rotate(pos - mat.sphere.xyz) );
 }
 
 // 反射ベクトル算出
@@ -149,6 +159,7 @@ struct Ray {
 
 vec3 getAlbedo(vec3 pos)
 {
+  pos = rotate(pos);
   float u = (floor(mod(pos.x * 4.0, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
   float v = (floor(mod(pos.y * 4.0, 2.0)) - 0.5) * 2;
   float w = (floor(mod(pos.z * 4.0, 2.0)) - 0.5) * 2;
@@ -158,10 +169,6 @@ vec3 getAlbedo(vec3 pos)
 // 色を決定する（ライティング）
 vec3 getColor(vec3 pos, vec3 normal, vec3 light_dir, vec3 light_color)
 {
-  /*float u = (floor(mod(pos.x * 4.0, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
-  float v = (floor(mod(pos.y * 4.0, 2.0)) - 0.5) * 2;
-  float w = (floor(mod(pos.z * 4.0, 2.0)) - 0.5) * 2;
-  vec3 albedo = mix(vec3(0.9, 0.5, 0.8), vec3(0.45, 0.25, 0.4), u*v*w);*/
   vec3 albedo = getAlbedo(pos);
 
   // ambient Color
@@ -227,7 +234,6 @@ vec3 getRay(Ray ray)
 	if (dr1 < 0.001) {
 	  ray.dir = calcReflectionDir(ray.pos, ray.dir);
 	  ray.color *= vec3(0.8,0.8,0.9);
-	  //ray.color *= getAlbedo(ray.pos);
 	  depth = min(depth, distance(camera_pos.xyz, ray.pos));
 	}
 	else {
@@ -253,7 +259,6 @@ vec3 getRay(Ray ray)
 	ray.pos += ray.dir * d;
   }
 
-  //return fog(ray.pos, ray.dir, col * ray.color);
   return fog(depth, ray.dir, col * ray.color);
 }
 

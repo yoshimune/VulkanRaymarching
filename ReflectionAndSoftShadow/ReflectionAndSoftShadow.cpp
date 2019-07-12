@@ -170,6 +170,15 @@ void ReflectionAndSoftShadow::makeCommand(VkCommandBuffer command)
 			vkUnmapMemory(m_device, memory);
 		}
 
+		auto shaderTransform = createShaderTransforms();
+		{
+			auto memory = m_uniformBuffers[m_imageIndex].shaderTransforms.memory;
+			void* p;
+			vkMapMemory(m_device, memory, 0, VK_WHOLE_SIZE, 0, &p);
+			memcpy(p, &shaderTransform, sizeof(shaderTransform));
+			vkUnmapMemory(m_device, memory);
+		}
+
 		// 作成したパイプラインをセット
 		vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_alpha);
 
@@ -227,11 +236,10 @@ ReflectionAndSoftShadow::ShaderParameters ReflectionAndSoftShadow::createShaderP
 	ShaderParameters shaderParam{};
 	shaderParam.resolution = vec4(width, height, 0.0f, 0.0f);
 
-
 	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(30.0 * currentTime)), glm::vec3(0, 1.0, 0));
 	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 1.0, -4.0));
 
-	shaderParam.camera_pos = rotation * translation * vec4(0, 0, 0, 1.0);
+	shaderParam.camera_pos = rotation * translation * vec4(0, 0, 0, 1.5);
 	shaderParam.camera_dir = vec4(glm::normalize(vec3(0) - vec3(shaderParam.camera_pos.x, shaderParam.camera_pos.y, shaderParam.camera_pos.z)), 0);
 
 	auto up = vec3(0.0f, 1.0f, 0.0f);
@@ -264,12 +272,25 @@ ReflectionAndSoftShadow::ShaderMaterials ReflectionAndSoftShadow::createShaderMa
 	ShaderMaterials shaderMaterial{};
 	shaderMaterial.sphere = vec4(0, 0, 0, 1.0f);
 	shaderMaterial.box = vec4(0, -2.0f, 0, 0.5f);
-	shaderMaterial.torus_pos = vec4(2.0f, 0, 0, 1.0f);
-	shaderMaterial.torus_size = vec4(0.5f, 0.2f, 0, 0);
+	shaderMaterial.torus_pos = vec4(0, 0, 0, 1.0f);
+	shaderMaterial.torus_size = vec4(2.0f, 0.3f, 0, 0);
 	shaderMaterial.hexPrizm_pos = vec4(-2.0f, 0, 0, 1.0);
 	shaderMaterial.hexPrizm_size = vec4(0.5f, 0.25f, 0, 0);
 	shaderMaterial.octahedron = vec4(0, 2.0f, 0, 0.5f);
 	return shaderMaterial;
+}
+
+ReflectionAndSoftShadow::ShaderTransforms ReflectionAndSoftShadow::createShaderTransforms()
+{
+	// ユニフォームバッファの中身を更新する
+	ShaderTransforms shaderTransforms{};
+	shaderTransforms.rotation =
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			//glm::radians(float(glm::sin(M_PI * currentTime) * 360.0f)),
+			float(glm::sin(M_PI * currentTime * 0.5) * M_PI),
+			glm::vec3(0, -1.0, 0));
+	return shaderTransforms;
 }
 
 void ReflectionAndSoftShadow::prepareGeometry()
@@ -311,6 +332,7 @@ void ReflectionAndSoftShadow::prepareUniformBuffer()
 		VkMemoryPropertyFlags uboFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 		v.shaderParameters = createBuffer(sizeof(ShaderParameters), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
 		v.shaderMaterials = createBuffer(sizeof(ShaderMaterials), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
+		v.shaderTransforms = createBuffer(sizeof(ShaderTransforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uboFlags);
 	}
 }
 
@@ -397,6 +419,15 @@ void ReflectionAndSoftShadow::prepareDescriptorSetLayout()
 		bindingUBO.descriptorCount = 1;
 		bindings.push_back(bindingUBO);
 	}
+	{
+		// Transform
+		VkDescriptorSetLayoutBinding bindingUBO{};
+		bindingUBO.binding = 2;
+		bindingUBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		bindingUBO.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		bindingUBO.descriptorCount = 1;
+		bindings.push_back(bindingUBO);
+	}
 
 	VkDescriptorSetLayoutCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -407,11 +438,13 @@ void ReflectionAndSoftShadow::prepareDescriptorSetLayout()
 
 void ReflectionAndSoftShadow::prepareDescriptorPool()
 {
-	array<VkDescriptorPoolSize, 2> descPoolSize;
+	array<VkDescriptorPoolSize, 3> descPoolSize;
 	descPoolSize[0].descriptorCount = 1;
 	descPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	descPoolSize[1].descriptorCount = 1;
 	descPoolSize[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descPoolSize[2].descriptorCount = 1;
+	descPoolSize[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 	VkDescriptorPoolCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -465,8 +498,21 @@ void ReflectionAndSoftShadow::prepareDescriptorSet()
 		ubo2.pBufferInfo = &descUBO2;
 		ubo2.dstSet = m_descriptorSet[i];
 
+		VkDescriptorBufferInfo descUBO3{};
+		descUBO3.buffer = m_uniformBuffers[i].shaderTransforms.buffer;
+		descUBO3.offset = 0;
+		descUBO3.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet ubo3{};
+		ubo3.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		ubo3.dstBinding = 2;
+		ubo3.descriptorCount = 1;
+		ubo3.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubo3.pBufferInfo = &descUBO3;
+		ubo3.dstSet = m_descriptorSet[i];
+
 		vector<VkWriteDescriptorSet> writeSets = {
-			ubo, ubo2
+			ubo, ubo2, ubo3
 		};
 		vkUpdateDescriptorSets(m_device, uint32_t(writeSets.size()), writeSets.data(), 0, nullptr);
 	}

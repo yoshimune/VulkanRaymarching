@@ -32,6 +32,7 @@ private:
 	{
 		BufferObject shaderParameters;
 		BufferObject shaderMaterials;
+		BufferObject shaderTransforms;
 	};
 
 	struct ShaderParameters
@@ -56,6 +57,10 @@ private:
 		glm::vec4 hexPrizm_size;
 		glm::vec4 octahedron;
 	};
+	struct ShaderTransforms
+	{
+		glm::mat4 rotation;
+	};
 
 
 	const glm::vec3 lightBlue = glm::vec3(0.7f, 0.8f, 0.99f);
@@ -65,6 +70,7 @@ private:
 	void prepareUniformBuffer();
 	ShaderParameters createShaderParameters();
 	ShaderMaterials createShaderMaterials();
+	ShaderTransforms createShaderTransforms();
 
 	BufferObject createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags);
 	VkPipelineShaderStageCreateInfo loadShaderModule(const char* fileName, VkShaderStageFlagBits stage);
