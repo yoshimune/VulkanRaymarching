@@ -27,24 +27,33 @@ layout(binding = 1) uniform Materials
   vec4 hexPrizm_pos;
   vec4 hexPrizm_size;
   vec4 octahedron; // xyz:position w:size
+  float l;	// linear interpolation sphere and box
 }mat;
 
 layout(binding = 2) uniform Transform
 {
-  mat4 rotation;
+  mat4 rotation_sphere;
+  mat4 rotation_torus1;
+  mat4 rotation_torus2;
+  mat4 rotation_torus3;
 }transform;
 
-vec3 rotate(vec3 p)
+vec3 rotate(vec3 p, mat4 rotation)
 {
   vec4 pos = vec4(p, 0);
-  pos = transform.rotation * pos;
+  pos = rotation * pos;
   return pos.xyz;
 }
 
-
 // 球の距離関数
 float sphere_d(vec3 p){
-  return length(p) - mat.sphere.w;
+  float sphere = length(p) - mat.sphere.w;
+
+  vec3 b = vec3(mat.box.w);
+  vec3 d = abs(p) - b;
+  float box = length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+
+  return mix(sphere, box, mat.l);
 }
 
 // Round Box
@@ -59,8 +68,16 @@ float rbox_d(vec3 p)
 // Torus
 float torus_d(vec3 p)
 {
-  vec2 q = vec2(length (p.xy) - mat.torus_size.x, p.z);
-  return length(q) - mat.torus_size.y;
+  vec2 q = vec2(length(p.xy) - mat.torus_size.x, p.z);
+  float d1 = length(q) - mat.torus_size.y;
+
+  vec2 q2 = vec2(length(p.yz) - mat.torus_size.x, p.x);
+  float d2 = length(q2) - mat.torus_size.y;
+
+  vec2 q3 = vec2(length(p.xz) - mat.torus_size.x, p.y);
+  float d3 = length(q3) - mat.torus_size.y;
+
+  return min(min(d1, d2), d3);
 }
 
 // Hexagonal Prism
@@ -112,14 +129,7 @@ vec3 reflectionPlane(vec3 pos, vec3 dir)
 // 距離関数（総合）
 float distanceFunc(vec3 pos)
 {
-  //return min(
-    //       min(
-		//     min(
-			//   octahedron_d(pos - mat.octahedron.xyz),
-			  // rbox_d(pos - mat.box.xyz)),
-			   //torus_d(pos - mat.torus_pos.xyz)),
-			   //hexPrizm_d(pos - mat.hexPrizm_pos.xyz));
-  return torus_d(rotate(pos - mat.torus_pos.xyz));
+  return torus_d(rotate(pos - mat.torus_pos.xyz, transform.rotation_torus1));
 }
 
 
@@ -136,7 +146,7 @@ vec3 calcNormal(vec3 pos)
 // 反射距離関数
 float reflectionDistance(vec3 pos)
 {
-  return sphere_d(rotate(pos - mat.sphere.xyz) );
+  return sphere_d(rotate(pos - mat.sphere.xyz, transform.rotation_sphere));
 }
 
 // 反射ベクトル算出
@@ -159,10 +169,10 @@ struct Ray {
 
 vec3 getAlbedo(vec3 pos)
 {
-  pos = rotate(pos);
-  float u = (floor(mod(pos.x * 4.0, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
-  float v = (floor(mod(pos.y * 4.0, 2.0)) - 0.5) * 2;
-  float w = (floor(mod(pos.z * 4.0, 2.0)) - 0.5) * 2;
+  pos = rotate(pos, transform.rotation_torus1);
+  float u = (floor(mod(pos.x * 2.0, 2.0)) - 0.5) * 2; // -1 or 1 の範囲に変換
+  float v = (floor(mod(pos.y * 2.0, 2.0)) - 0.5) * 2;
+  float w = (floor(mod(pos.z * 2.0, 2.0)) - 0.5) * 2;
   return mix(vec3(0.9, 0.5, 0.8), vec3(0.45, 0.25, 0.4), u*v*w);
 }
 

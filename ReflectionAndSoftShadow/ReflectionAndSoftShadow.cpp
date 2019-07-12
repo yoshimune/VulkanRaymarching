@@ -236,7 +236,7 @@ ReflectionAndSoftShadow::ShaderParameters ReflectionAndSoftShadow::createShaderP
 	ShaderParameters shaderParam{};
 	shaderParam.resolution = vec4(width, height, 0.0f, 0.0f);
 
-	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(30.0 * currentTime)), glm::vec3(0, 1.0, 0));
+	auto rotation = glm::rotate(glm::identity<glm::mat4>(), glm::radians(float(15.0 * currentTime)), glm::vec3(0, 1.0, 0));
 	auto translation = glm::translate(glm::identity<glm::mat4>(), vec3(0, 1.0, -4.0));
 
 	shaderParam.camera_pos = rotation * translation * vec4(0, 0, 0, 1.5);
@@ -270,13 +270,14 @@ ReflectionAndSoftShadow::ShaderMaterials ReflectionAndSoftShadow::createShaderMa
 {
 	// ユニフォームバッファの中身を更新する
 	ShaderMaterials shaderMaterial{};
-	shaderMaterial.sphere = vec4(0, 0, 0, 1.0f);
-	shaderMaterial.box = vec4(0, -2.0f, 0, 0.5f);
+	shaderMaterial.sphere = vec4(0, 0, 0, 1.3f);
+	shaderMaterial.box = vec4(0, -2.0f, 0, 0.8f);
 	shaderMaterial.torus_pos = vec4(0, 0, 0, 1.0f);
-	shaderMaterial.torus_size = vec4(2.0f, 0.3f, 0, 0);
+	shaderMaterial.torus_size = vec4(2.5f, 0.15f, 0, 0);
 	shaderMaterial.hexPrizm_pos = vec4(-2.0f, 0, 0, 1.0);
 	shaderMaterial.hexPrizm_size = vec4(0.5f, 0.25f, 0, 0);
 	shaderMaterial.octahedron = vec4(0, 2.0f, 0, 0.5f);
+	shaderMaterial.l = (glm::sin(M_PI * currentTime * 0.5) + 1.0f) * 0.5f;
 	return shaderMaterial;
 }
 
@@ -284,12 +285,54 @@ ReflectionAndSoftShadow::ShaderTransforms ReflectionAndSoftShadow::createShaderT
 {
 	// ユニフォームバッファの中身を更新する
 	ShaderTransforms shaderTransforms{};
-	shaderTransforms.rotation =
+	shaderTransforms.rotation_sphere =
 		glm::rotate(
 			glm::identity<glm::mat4>(),
-			//glm::radians(float(glm::sin(M_PI * currentTime) * 360.0f)),
-			float(glm::sin(M_PI * currentTime * 0.5) * M_PI),
+			glm::radians(45.0f),
+			glm::vec3(0, 0, 1.0));
+	shaderTransforms.rotation_sphere *=
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			glm::radians(45.0f),
+			glm::vec3(1.0, 0, 0));
+	shaderTransforms.rotation_sphere *=
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			float(glm::sin(M_PI * currentTime * 0.25) * M_PI),
 			glm::vec3(0, -1.0, 0));
+
+	shaderTransforms.rotation_torus1 =
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			float(glm::sin(M_PI * currentTime * 0.25) * M_PI),
+			glm::vec3(0, -1.0, 0));
+	shaderTransforms.rotation_torus1 *=
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			glm::radians(float(30.0 * currentTime)),
+			glm::vec3(0, 0, 1.0));
+
+	shaderTransforms.rotation_torus2 =
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			float(glm::cos(M_PI * currentTime * 0.25) * M_PI),
+			glm::vec3(0, 1.0, 0));
+	shaderTransforms.rotation_torus2 *=
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			glm::radians(float(30.0 * currentTime)),
+			glm::vec3(0, 0, -1.0));
+
+	shaderTransforms.rotation_torus3 =
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			float(glm::sin(M_PI * ((currentTime + 0.5) * 0.25)) * M_PI),
+			glm::vec3(1.0, 0, 0));
+	shaderTransforms.rotation_torus3 *=
+		glm::rotate(
+			glm::identity<glm::mat4>(),
+			glm::radians(float(30.0 * currentTime)),
+			glm::vec3(0, 1.0, 0));
 	return shaderTransforms;
 }
 
