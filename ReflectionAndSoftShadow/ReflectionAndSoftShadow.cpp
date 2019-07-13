@@ -459,13 +459,9 @@ void ReflectionAndSoftShadow::prepareDescriptorSetLayout()
 
 void ReflectionAndSoftShadow::prepareDescriptorPool()
 {
-	array<VkDescriptorPoolSize, 3> descPoolSize;
-	descPoolSize[0].descriptorCount = 1;
+	array<VkDescriptorPoolSize, 1> descPoolSize;
+	descPoolSize[0].descriptorCount = 3;
 	descPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descPoolSize[1].descriptorCount = 1;
-	descPoolSize[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descPoolSize[2].descriptorCount = 1;
-	descPoolSize[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 	VkDescriptorPoolCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
