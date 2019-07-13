@@ -134,6 +134,8 @@ void ReflectionAndSoftShadow::cleanup()
 		vkFreeMemory(m_device, v.shaderParameters.memory, nullptr);
 		vkDestroyBuffer(m_device, v.shaderMaterials.buffer, nullptr);
 		vkFreeMemory(m_device, v.shaderMaterials.memory, nullptr);
+		vkDestroyBuffer(m_device, v.shaderTransforms.buffer, nullptr);
+		vkFreeMemory(m_device, v.shaderTransforms.memory, nullptr);
 	}
 
 	vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
@@ -222,7 +224,7 @@ ReflectionAndSoftShadow::BufferObject ReflectionAndSoftShadow::createBuffer(uint
 	// メモリタイプの判定
 	info.memoryTypeIndex = getMemoryTypeIndex(reqs.memoryTypeBits, flags);
 
-	// メモリの確保
+	// メモリの割当
 	vkAllocateMemory(m_device, &info, nullptr, &obj.memory);
 
 	// メモリのバインド
